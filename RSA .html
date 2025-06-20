@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA非对称加密工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1F2937',
+                        light: '#F3F4F6'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-height {
+                transition: max-height 0.5s ease-in-out;
+            }
+            .card-shadow {
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            .key-display {
+                font-family: monospace;
+                font-size: 0.85rem;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-light to-blue-50 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 标题区域 -->
+        <header class="text-center mb-10">
+            <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark mb-3">
+                <i class="fa fa-key text-primary mr-3"></i>RSA非对称加密工具
+            </h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">
+                使用现代Web技术实现的RSA非对称加密工具，支持生成密钥对，使用公钥加密和私钥解密数据。
+            </p>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="grid md:grid-cols-2 gap-8">
+            <!-- 密钥生成部分 -->
+            <section class="bg-white rounded-xl p-6 card-shadow transform transition-all hover:shadow-lg">
+                <h2 class="text-xl font-bold text-dark mb-4 flex items-center">
+                    <i class="fa fa-key text-primary mr-2"></i>生成密钥对
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="key-size" class="block text-sm font-medium text-gray-700 mb-1">密钥长度</label>
+                        <select id="key-size" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            <option value="2048">2048位 (标准)</option>
+                            <option value="3072">3072位 (更高安全性)</option>
+                            <option value="4096">4096位 (最高安全性)</option>
+                        </select>
+                    </div>
+                    
+                    <button id="generate-key-pair" class="w-full py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
+                        <i class="fa fa-refresh mr-2"></i> 生成密钥对
+                    </button>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">公钥 (PEM格式)</label>
+                        <div class="relative">
+                            <textarea id="public-key" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all key-display" placeholder="生成的公钥将显示在这里..." readonly></textarea>
+                            <button id="copy-public-key" class="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                                <i class="fa fa-copy mr-1"></i> 复制
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">私钥 (PEM格式)</label>
+                        <div class="relative">
+                            <textarea id="private-key" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all key-display" placeholder="生成的私钥将显示在这里..." readonly></textarea>
+                            <button id="copy-private-key" class="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                                <i class="fa fa-copy mr-1"></i> 复制
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 加密部分 -->
+            <section class="bg-white rounded-xl p-6 card-shadow transform transition-all hover:shadow-lg">
+                <h2 class="text-xl font-bold text-dark mb-4 flex items-center">
+                    <i class="fa fa-shield text-primary mr-2"></i>加密
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="encrypt-text" class="block text-sm font-medium text-gray-700 mb-1">明文</label>
+                        <textarea id="encrypt-text" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="输入要加密的文本..."></textarea>
+                    </div>
+                    
+                    <label for="encrypt-public-key" class="block text-sm font-medium text-gray-700 mb-1">公钥 (PEM格式)</label>
+                    <div class="relative">
+                        <textarea id="encrypt-public-key" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all key-display" placeholder="粘贴用于加密的公钥..."></textarea>
+                        <button id="use-generated-public-key" class="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                            <i class="fa fa-arrow-right mr-1"></i> 使用生成的公钥
+                        </button>
+                    </div>
+                    
+                    <button id="encrypt-btn" class="w-full py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
+                        <i class="fa fa-lock mr-2"></i> 加密
+                    </button>
+                    
+                    <div class="mt-4">
+                        <label for="encrypted-result" class="block text-sm font-medium text-gray-700 mb-1">加密结果 (Base64)</label>
+                        <div class="relative">
+                            <textarea id="encrypted-result" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="加密后的文本将显示在这里..." readonly></textarea>
+                            <button id="copy-encrypted-result" class="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                                <i class="fa fa-copy mr-1"></i> 复制
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 解密部分 -->
+            <section class="bg-white rounded-xl p-6 card-shadow transform transition-all hover:shadow-lg">
+                <h2 class="text-xl font-bold text-dark mb-4 flex items-center">
+                    <i class="fa fa-unlock text-secondary mr-2"></i>解密
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="decrypt-text" class="block text-sm font-medium text-gray-700 mb-1">密文 (Base64)</label>
+                        <textarea id="decrypt-text" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="输入要解密的Base64格式密文..."></textarea>
+                    </div>
+                    
+                    <label for="decrypt-private-key" class="block text-sm font-medium text-gray-700 mb-1">私钥 (PEM格式)</label>
+                    <div class="relative">
+                        <textarea id="decrypt-private-key" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all key-display" placeholder="粘贴用于解密的私钥..."></textarea>
+                        <button id="use-generated-private-key" class="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                            <i class="fa fa-arrow-right mr-1"></i> 使用生成的私钥
+                        </button>
+                    </div>
+                    
+                    <button id="decrypt-btn" class="w-full py-2 px-4 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors flex items-center justify-center">
+                        <i class="fa fa-unlock-alt mr-2"></i> 解密
+                    </button>
+                    
+                    <div class="mt-4">
+                        <label for="decrypted-result" class="block text-sm font-medium text-gray-700 mb-1">解密结果</label>
+                        <textarea id="decrypted-result" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="解密后的文本将显示在这里..." readonly></textarea>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- 信息卡片 -->
+        <div class="mt-8 bg-white rounded-xl p-6 card-shadow">
+            <h2 class="text-xl font-bold text-dark mb-4 flex items-center">
+                <i class="fa fa-info-circle text-primary mr-2"></i>关于此工具
+            </h2>
+            <div class="space-y-3 text-gray-700">
+                <p>此工具使用现代Web Crypto API实现RSA非对称加密和解密，采用RSA-OAEP模式，提供了生成密钥对、使用公钥加密和私钥解密的功能。</p>
+                <p><strong>RSA非对称加密</strong> 使用一对密钥：公钥用于加密，私钥用于解密。公钥可以公开分享，而私钥必须严格保密。</p>
+                <p>所有操作均在您的浏览器本地完成，不会将您的数据发送到任何服务器。</p>
+                <p class="text-red-600 font-medium"><i class="fa fa-exclamation-triangle mr-1"></i> 注意：私钥是解密的关键，请妥善保管，不要与他人分享。</p>
+            </div>
+        </div>
+        
+        <!-- 通知区域 -->
+        <div id="notification" class="fixed bottom-4 right-4 max-w-sm bg-white rounded-lg shadow-lg p-4 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+            <div class="flex items-start">
+                <div id="notification-icon" class="flex-shrink-0 mt-0.5">
+                    <i class="fa fa-check-circle text-green-500"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 id="notification-title" class="text-sm font-medium text-gray-800">操作成功</h3>
+                    <div id="notification-message" class="mt-1 text-sm text-gray-600"></div>
+                </div>
+                <button id="close-notification" class="ml-auto flex-shrink-0 flex text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 生成密钥对
+        document.getElementById('generate-key-pair').addEventListener('click', async function() {
+            try {
+                const keySize = parseInt(document.getElementById('key-size').value);
+                
+                // 生成RSA密钥对
+                const keyPair = await window.crypto.subtle.generateKey(
+                    {
+                        name: 'RSA-OAEP',
+                        modulusLength: keySize,
+                        publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 65537
+                        hash: 'SHA-256'
+                    },
+                    true,
+                    ['encrypt', 'decrypt']
+                );
+                
+                // 导出公钥为PEM格式
+                const publicKeyPEM = await exportPublicKeyToPEM(keyPair.publicKey);
+                
+                // 导出私钥为PEM格式
+                const privateKeyPEM = await exportPrivateKeyToPEM(keyPair.privateKey);
+                
+                // 显示生成的密钥
+                document.getElementById('public-key').value = publicKeyPEM;
+                document.getElementById('private-key').value = privateKeyPEM;
+                document.getElementById('encrypt-public-key').value = publicKeyPEM;
+                document.getElementById('decrypt-private-key').value = privateKeyPEM;
+                
+                showNotification('成功', `已生成${keySize}位RSA密钥对`, 'success');
+            } catch (error) {
+                console.error('生成密钥对失败:', error);
+                showNotification('错误', '生成密钥对失败: ' + error.message, 'error');
+            }
+        });
+
+        // 加密按钮点击事件
+        document.getElementById('encrypt-btn').addEventListener('click', async function() {
+            const plaintext = document.getElementById('encrypt-text').value.trim();
+            const publicKeyPEM = document.getElementById('encrypt-public-key').value.trim();
+            
+            if (!plaintext) {
+                showNotification('警告', '请输入要加密的明文', 'warning');
+                return;
+            }
+            
+            if (!publicKeyPEM) {
+                showNotification('警告', '请输入用于加密的公钥', 'warning');
+                return;
+            }
+            
+            try {
+                // 从PEM格式导入公钥
+                const publicKey = await importPublicKeyFromPEM(publicKeyPEM);
+                
+                // 将明文转换为ArrayBuffer
+                const encoder = new TextEncoder();
+                const data = encoder.encode(plaintext);
+                
+                // 加密数据
+                const encrypted = await window.crypto.subtle.encrypt(
+                    {
+                        name: 'RSA-OAEP'
+                    },
+                    publicKey,
+                    data
+                );
+                
+                // 转换为Base64格式
+                const encryptedBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(encrypted)));
+                
+                // 显示加密结果
+                document.getElementById('encrypted-result').value = encryptedBase64;
+                document.getElementById('decrypt-text').value = encryptedBase64;
+                
+                showNotification('成功', '加密完成', 'success');
+            } catch (error) {
+                console.error('加密失败:', error);
+                showNotification('错误', '加密失败: ' + error.message, 'error');
+            }
+        });
+
+        // 解密按钮点击事件
+        document.getElementById('decrypt-btn').addEventListener('click', async function() {
+            const ciphertextBase64 = document.getElementById('decrypt-text').value.trim();
+            const privateKeyPEM = document.getElementById('decrypt-private-key').value.trim();
+            
+            if (!ciphertextBase64) {
+                showNotification('警告', '请输入要解密的密文', 'warning');
+                return;
+            }
+            
+            if (!privateKeyPEM) {
+                showNotification('警告', '请输入用于解密的私钥', 'warning');
+                return;
+            }
+            
+            try {
+                // 从PEM格式导入私钥
+                const privateKey = await importPrivateKeyFromPEM(privateKeyPEM);
+                
+                // 将Base64密文转换为ArrayBuffer
+                const ciphertextArray = Uint8Array.from(atob(ciphertextBase64), c => c.charCodeAt(0));
+                
+                // 解密数据
+                const decrypted = await window.crypto.subtle.decrypt(
+                    {
+                        name: 'RSA-OAEP'
+                    },
+                    privateKey,
+                    ciphertextArray
+                );
+                
+                // 将解密结果转换为文本
+                const decoder = new TextDecoder();
+                const decryptedText = decoder.decode(decrypted);
+                
+                // 显示解密结果
+                document.getElementById('decrypted-result').value = decryptedText;
+                
+                showNotification('成功', '解密完成', 'success');
+            } catch (error) {
+                console.error('解密失败:', error);
+                showNotification('错误', '解密失败: 私钥可能不正确或数据已损坏', 'error');
+            }
+        });
+
+        // 使用生成的公钥
+        document.getElementById('use-generated-public-key').addEventListener('click', function() {
+            const publicKey = document.getElementById('public-key').value;
+            if (publicKey) {
+                document.getElementById('encrypt-public-key').value = publicKey;
+                showNotification('信息', '已使用生成的公钥', 'info');
+            } else {
+                showNotification('警告', '请先生成密钥对', 'warning');
+            }
+        });
+
+        // 使用生成的私钥
+        document.getElementById('use-generated-private-key').addEventListener('click', function() {
+            const privateKey = document.getElementById('private-key').value;
+            if (privateKey) {
+                document.getElementById('decrypt-private-key').value = privateKey;
+                showNotification('信息', '已使用生成的私钥', 'info');
+            } else {
+                showNotification('警告', '请先生成密钥对', 'warning');
+            }
+        });
+
+        // 复制功能
+        document.getElementById('copy-public-key').addEventListener('click', function() {
+            copyToClipboard('public-key', '公钥已复制到剪贴板');
+        });
+        
+        document.getElementById('copy-private-key').addEventListener('click', function() {
+            copyToClipboard('private-key', '私钥已复制到剪贴板');
+        });
+        
+        document.getElementById('copy-encrypted-result').addEventListener('click', function() {
+            copyToClipboard('encrypted-result', '加密结果已复制到剪贴板');
+        });
+
+        // 复制到剪贴板函数
+        function copyToClipboard(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            showNotification('成功', message, 'success');
+        }
+
+        // 显示通知
+        function showNotification(title, message, type) {
+            const notification = document.getElementById('notification');
+            const notificationTitle = document.getElementById('notification-title');
+            const notificationMessage = document.getElementById('notification-message');
+            const notificationIcon = document.getElementById('notification-icon').querySelector('i');
+            
+            // 设置通知内容
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            
+            // 设置通知图标和颜色
+            if (type === 'success') {
+                notificationIcon.className = 'fa fa-check-circle text-green-500';
+            } else if (type === 'error') {
+                notificationIcon.className = 'fa fa-exclamation-circle text-red-500';
+            } else if (type === 'warning') {
+                notificationIcon.className = 'fa fa-exclamation-triangle text-yellow-500';
+            } else if (type === 'info') {
+                notificationIcon.className = 'fa fa-info-circle text-blue-500';
+            }
+            
+            // 显示通知
+            notification.classList.remove('translate-y-20', 'opacity-0');
+            notification.classList.add('translate-y-0', 'opacity-100');
+            
+            // 自动关闭通知
+            const timeoutId = setTimeout(() => {
+                closeNotification();
+            }, 5000);
+            
+            // 点击关闭按钮
+            document.getElementById('close-notification').onclick = function() {
+                clearTimeout(timeoutId);
+                closeNotification();
+            };
+        }
+
+        // 关闭通知
+        function closeNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.remove('translate-y-0', 'opacity-100');
+            notification.classList.add('translate-y-20', 'opacity-0');
+        }
+
+        // 辅助函数：导出公钥为PEM格式
+        async function exportPublicKeyToPEM(publicKey) {
+            const exported = await window.crypto.subtle.exportKey('spki', publicKey);
+            const exportedAsBase64 = arrayBufferToBase64(exported);
+            return `-----BEGIN PUBLIC KEY-----\n${wrapText(exportedAsBase64, 64)}\n-----END PUBLIC KEY-----`;
+        }
+
+        // 辅助函数：导出私钥为PEM格式
+        async function exportPrivateKeyToPEM(privateKey) {
+            const exported = await window.crypto.subtle.exportKey('pkcs8', privateKey);
+            const exportedAsBase64 = arrayBufferToBase64(exported);
+            return `-----BEGIN PRIVATE KEY-----\n${wrapText(exportedAsBase64, 64)}\n-----END PRIVATE KEY-----`;
+        }
+
+        // 辅助函数：从PEM格式导入公钥
+        async function importPublicKeyFromPEM(pem) {
+            const pemHeader = '-----BEGIN PUBLIC KEY-----';
+            const pemFooter = '-----END PUBLIC KEY-----';
+            const pemContents = pem.substring(pemHeader.length, pem.length - pemFooter.length);
+            const binaryDerString = window.atob(pemContents.trim());
+            const binaryDer = stringToArrayBuffer(binaryDerString);
+            
+            return await window.crypto.subtle.importKey(
+                'spki',
+                binaryDer,
+                {
+                    name: 'RSA-OAEP',
+                    hash: 'SHA-256'
+                },
+                true,
+                ['encrypt']
+            );
+        }
+
+        // 辅助函数：从PEM格式导入私钥
+        async function importPrivateKeyFromPEM(pem) {
+            const pemHeader = '-----BEGIN PRIVATE KEY-----';
+            const pemFooter = '-----END PRIVATE KEY-----';
+            const pemContents = pem.substring(pemHeader.length, pem.length - pemFooter.length);
+            const binaryDerString = window.atob(pemContents.trim());
+            const binaryDer = stringToArrayBuffer(binaryDerString);
+            
+            return await window.crypto.subtle.importKey(
+                'pkcs8',
+                binaryDer,
+                {
+                    name: 'RSA-OAEP',
+                    hash: 'SHA-256'
+                },
+                true,
+                ['decrypt']
+            );
+        }
+
+        // 辅助函数：将ArrayBuffer转换为Base64
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        // 辅助函数：将字符串转换为ArrayBuffer
+        function stringToArrayBuffer(str) {
+            const buf = new ArrayBuffer(str.length);
+            const bufView = new Uint8Array(buf);
+            for (let i = 0, strLen = str.length; i < strLen; i++) {
+                bufView[i] = str.charCodeAt(i);
+            }
+            return buf;
+        }
+
+        // 辅助函数：将文本按指定长度换行
+        function wrapText(text, lineLength) {
+            return text.match(new RegExp('.{1,' + lineLength + '}', 'g')).join('\n');
+        }
+    </script>
+</body>
+</html>
+    
